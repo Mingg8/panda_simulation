@@ -47,3 +47,6 @@ This repository was extended with a node that publishes a simple box object in t
 ## Extension: Visual Studio Code Remote Docker
 
 I have added configuration files and additional setup scripts for developing and using this ROS package within a *Docker* container. Currently user interfaces for Gazebo and RViz are not supported. You can read more about it in the [blog post](https://erdalpekel.de/?p=219).
+
+## Debugging
+error while loading shared libraries: libmoveit_warehouse.so.0.9.15

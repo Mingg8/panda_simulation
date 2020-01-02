@@ -27,6 +27,7 @@
   <depend>joint_trajectory_controller</depend>
   <depend>robot_state_publisher</depend>
   <depend>roscpp</depend>
+  <depend>rospy</depend>
   <depend>std_msgs</depend>
   <depend>tf</depend>
   <depend>xacro</depend>
