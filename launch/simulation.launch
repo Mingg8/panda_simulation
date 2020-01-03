@@ -11,7 +11,6 @@
 
     <!--launch GAZEBO with own world configuration -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <!-- <arg name="world_name" value="$(find robotics_assisted_tomography)/worlds/tomography.world"/> -->
         <arg name="debug" value="$(arg debug)"/>
         <arg name="gui" value="$(arg gui)"/>
         <arg name="paused" value="$(arg paused)"/>
@@ -29,7 +28,6 @@
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller panda_arm_controller" />
     <node if="$(arg load_gripper)" name="controller_spawner_hand" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="panda_hand_controller" />
 
-
     <!-- convert joint states to TF transforms for rviz, etc -->
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
 
@@ -37,7 +35,7 @@
         <arg name="load_robot_description" value="true"/>
         <arg name="load_gripper" value="$(arg load_gripper)" />
     </include>
-    <include file="$(find panda_moveit_config)/launch/move_group.launch">
+    <!-- <include file="$(find panda_moveit_config)/launch/move_group.launch">
         <arg name="load_gripper" value="$(arg load_gripper)" />
     </include>
     <group if="$(arg gui)">
@@ -46,7 +44,7 @@
 
     <node name="joint_state_desired_publisher" pkg="topic_tools" type="relay" args="joint_states joint_states_desired" />
 
-    <!-- launch robot control node for moveit motion planning -->
-    <node pkg="panda_simulation" type="robot_control_node" name="robot_control_node" output="screen"/>
-
+    
+    <node pkg="panda_simulation" type="robot_control_node" name="robot_control_node" output="screen"/> -->
+<!-- launch robot control node for moveit motion planning -->
 </launch>

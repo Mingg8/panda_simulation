@@ -29,16 +29,13 @@
   <depend>roscpp</depend>
   <depend>rospy</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>tf</depend>
   <depend>xacro</depend>
   <depend>libjsoncpp-dev</depend>
   <depend>moveit_simple_controller_manager</depend>
-  
-  <!-- CUSTOM -->
-  <depend>moveit_core</depend>
-  <depend>moveit_ros_planning_interface</depend>
-  <depend>moveit_ros_perception</depend>
-  <depend>moveit_visual_tools</depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

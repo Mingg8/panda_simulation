@@ -60,25 +60,24 @@ void Model::setModel() {
         -PI_DEFINED / 2.0, PI_DEFINED / 2.0, PI_DEFINED / 2.0, 0.0;
 }
 
-MatrixXd Model::getJacobian(VectorXd q) {
+MatrixXd Model::getJacobian(V7d q) {
     MatrixXd jacobian(6, 7);
 	MatrixXd p_body(3, 7);
 	for (int i = 0; i < 7; i++)
 	{
-        Matrix4d T_tmp;
-		mod_DH_T(a(i), d(i), alpha(i), q(i), &T_tmp);
+        Matrix4d T_tmp = mod_DH_T(a(i), d(i), alpha(i), q(i));
 		jacobian.block<3, 1>(3, i) = T_tmp.block<3, 1>(0, 2);
 		p_body.block<3, 1>(0, i) = T_tmp.block<3, 1>(0, 3);
 	}
 	for (int i = 0; i < 7; i++) {
 		Vector3d w = jacobian.block<3, 1>(3, i);
-		jacobian.block<3, 1>(0, i) = w.dot(p_body.block<3, 1>(0, 6)
-			- p_body.block<3, 1>(0, i));
+        Vector3d r = p_body.block<3, 1>(0, 6) - p_body.block<3, 1>(0, i);
+		jacobian.block<3, 1>(0, i) = w.cross(r);
 	}
     return jacobian;
 }
 
-static Matrix3d Model::skew(Vector3d w)
+Matrix3d Model::skew(Vector3d w)
 {
 	Matrix3d W_temp;
 	W_temp << 0.0, -w(2), w(1),
@@ -87,7 +86,7 @@ static Matrix3d Model::skew(Vector3d w)
 	return W_temp;
 }
 
-static Matrix4d Model::SE3_matrix(Matrix3d R, Vector3d p)
+Matrix4d Model::SE3_matrix(Matrix3d R, Vector3d p)
 {
 	Matrix<double, 4, 4> T_tmp;
 	T_tmp.setZero();
@@ -97,7 +96,7 @@ static Matrix4d Model::SE3_matrix(Matrix3d R, Vector3d p)
 	return T_tmp;
 }
 
-static Matrix3d Model::rot(double rad, char axis)
+Matrix3d Model::rot(double rad, char axis)
 {
 	Matrix3d R_tmp;
 	R_tmp.setZero();
@@ -139,31 +138,29 @@ static Matrix3d Model::rot(double rad, char axis)
 	return R_tmp;
 }
 
-static Matrix4d Model::mod_DH_T(double a, double d, double alpha,
+Matrix4d Model::mod_DH_T(double a, double d, double alpha,
 	double theta)
 {
-	Matrix<double, 4, 4> T_tmp, T_tmp1, T_tmp2, T_tmp3, T_tmp4;
 	Vector3d p_tmp1, p_tmp2, p_tmp3;
 	p_tmp1.setZero();
 	p_tmp2.setZero();
 	p_tmp3.setZero();
 
-	Matrix3d R_tmp1, R_tmp2;
-	rot(alpha, 'x', &R_tmp1);
-	rot(theta, 'z', &R_tmp2);
+	Matrix3d R_tmp1 = rot(alpha, 'x');
+	Matrix3d R_tmp2 = rot(theta, 'z');
 	
 	p_tmp2(0) = a;
 	p_tmp3(2) = d;
 
-	SE3_matrix(R_tmp1, p_tmp1, &T_tmp1);
-	SE3_matrix(eye3, p_tmp2, &T_tmp2);
-	SE3_matrix(R_tmp2, p_tmp1, &T_tmp3);
-	SE3_matrix(eye3, p_tmp3, &T_tmp4);
-	T_tmp = T_tmp1 * T_tmp2 * T_tmp3 * T_tmp4;
+	Matrix4d T_tmp1 = SE3_matrix(R_tmp1, p_tmp1);
+	Matrix4d T_tmp2 = SE3_matrix(eye3, p_tmp2);
+	Matrix4d T_tmp3 = SE3_matrix(R_tmp2, p_tmp1);
+	Matrix4d T_tmp4 = SE3_matrix(eye3, p_tmp3);
+	Matrix4d T_tmp = T_tmp1 * T_tmp2 * T_tmp3 * T_tmp4;
 	return T_tmp;
 }
 
-static MatrixXd Model::Ad(Matrix<double, 4, 4> T)
+MatrixXd Model::Ad(Matrix<double, 4, 4> T)
 {
 	Matrix<double, 6, 6> Adjoint_tmp;
 	Adjoint_tmp.setZero();
@@ -176,7 +173,7 @@ static MatrixXd Model::Ad(Matrix<double, 4, 4> T)
 	return Adjoint_tmp;
 }
 
-static void Model::adj(Matrix<double, 6, 1> V)
+MatrixXd Model::adj(Matrix<double, 6, 1> V)
 {
 	Matrix<double, 6, 6> adjoint_temp;
 	adjoint_temp.setZero();
@@ -190,9 +187,7 @@ static void Model::adj(Matrix<double, 6, 1> V)
 	return adjoint_temp;
 }
 
-void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
-    Matrix<double, 7, 7> *M, Matrix<double, 7, 7> *C,
-	Matrix<double, 7, 1> *Grav)
+void Model::NE_matrix(V7d q, V7d dq, M7d &M, M7d &C, V7d &Grav)
 {
 	Matrix<double, 6, 1> Arot;
 	Arot << 0.0, 0.0, 1.0, 0.0, 0.0, 0.0;
@@ -215,7 +210,7 @@ void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
 	Matrix3d skew_ML;
 	for (int i = 0; i < 7; i++)
 	{
-		mod_DH_T(a(i), d(i), alpha(i), q(i), &T_tmp);
+		T_tmp = mod_DH_T(a(i), d(i), alpha(i), q(i));
 
 		R.block<3, 3>(0, 3 * i) = T_tmp.block<3, 3>(0, 0);
 
@@ -234,12 +229,12 @@ void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
 		Gi.block<3, 3>(6 * i + 3, 6 * i + 3) = m(i) * eye3;
 	}
 
+    Matrix<double, 6, 6> AdT;
 	Matrix<double, 42, 42> W1;
 	W1.setZero();
-	Matrix<double, 6, 6> AdT;
 	for (int i = 0; i < 6; i++)
 	{
-		Ad(T.block<4, 4>(0, 4 * (i + 1)), &AdT);
+		AdT = Ad(T.block<4, 4>(0, 4 * (i + 1)));
 		W1.block<6, 6>(6 * i + 6, 6 * i) = AdT;
 	}
 
@@ -262,7 +257,7 @@ void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
 				{
 					T_temp = T.block<4, 4>(0, 4 * k) * T_temp;
 				}
-				Ad(T_temp, &AdT);
+				AdT = Ad(T_temp);
 				LL.block<6, 6>(6 * j, 6 * i) = AdT;
 			}
 		}
@@ -277,7 +272,7 @@ void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
 	V.block<6, 1>(0, 0) = Arot * dq(0);
 	for (int i = 1; i < 7; i++)
 	{
-		Ad(T.block<4, 4>(0, 4 * i), &AdT);
+		AdT = Ad(T.block<4, 4>(0, 4 * i));
 		V.block<6, 1>(0, i) = AdT * V.block<6, 1>(0, i - 1) + Arot * dq(i);
 	}
 
@@ -286,17 +281,17 @@ void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
 	Matrix<double, 6, 6> adj_V;
 	for (int i = 0; i < 7; i++)
 	{
-		adj(V.block<6, 1>(0, i), &adj_V);
+		adj_V = adj(V.block<6, 1>(0, i));
 		ad_V.block<6, 6>(6 * i, 6 * i) = adj_V;
 	}
 	
 	Matrix<double, 42, 1> dV_base;
 	dV_base.setZero();
-	Ad(T.block<4, 4>(0, 0), &AdT);
+	AdT = Ad(T.block<4, 4>(0, 0));
 	dV_base.block<6, 1>(0, 0) = AdT * dV0;
 
-	*M = A.transpose() * LL.transpose() * Gi * LL * A;
-	*C = A.transpose() * LL.transpose() * (Gi * LL * ad_V - ad_V.transpose()
+	M = A.transpose() * LL.transpose() * Gi * LL * A;
+	C = A.transpose() * LL.transpose() * (Gi * LL * ad_V - ad_V.transpose()
         * Gi * LL) * A;
-	*Grav = A.transpose() * LL.transpose() * Gi * LL * dV_base;
+	Grav = A.transpose() * LL.transpose() * Gi * LL * dV_base;
 }

@@ -8,7 +8,7 @@
 // C/C++ source code generated on  : 16-Nov-2018 17:26:57
 //
 #pragma once
-
+#include <ros/ros.h>
 #include <Eigen/Dense>
 
 using namespace Eigen;
@@ -32,10 +32,9 @@ ConstMatrix6 eye6 = Eigen::Matrix<double, 6, 6>::Identity();
 class Model {
   public:
 	Model();
-    void NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
-        Matrix<double, 7, 7> *M, Matrix<double, 7, 7> *C,
-        Matrix<double, 7, 1> *Grav);
-    MatrixXd getJacobian(VectorXd q);
+    void NE_matrix(V7d q, V7d dq, Matrix<double, 7, 7> &M,
+        Matrix<double, 7, 7> &C, Matrix<double, 7, 1> &Grav);
+    MatrixXd getJacobian(V7d q);
 	static Matrix3d skew(Vector3d w);
 	static Matrix4d SE3_matrix(Matrix3d R, Vector3d p);
 	static Matrix3d rot(double rad, char axis);
@@ -122,4 +121,4 @@ class Model {
 	double J_joint_xy7 = 0.0012;
 	double J_joint_xz7 = 0.0017;
 	double J_joint_yz7 = -0.0006;
-}
+};
