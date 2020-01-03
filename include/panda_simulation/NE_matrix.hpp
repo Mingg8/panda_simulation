@@ -14,14 +14,36 @@
 using namespace Eigen;
 
 #define gravity 9.81
-#define PI_DEFINED 3.1415926535897932384626433832795028841971 
+#define PI_DEFINED 3.1415926535897932384626433832795028841971
+
+// constant
+
+typedef const Matrix3d ConstMatrix3;
+typedef const Matrix4d ConstMatrix4;
+typedef const Eigen::Matrix<double, 6, 6> ConstMatrix6;
+typedef Matrix<double, 7, 7> M7d;
+typedef Matrix<double, 7, 1> V7d;
+
+ConstMatrix3 eye3 = Matrix3d::Identity();
+ConstMatrix4 eye4 = Matrix4d::Identity();
+ConstMatrix6 eye6 = Eigen::Matrix<double, 6, 6>::Identity();
+
 
 class Model {
   public:
+	Model();
     void NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
         Matrix<double, 7, 7> *M, Matrix<double, 7, 7> *C,
         Matrix<double, 7, 1> *Grav);
     MatrixXd getJacobian(VectorXd q);
+	static Matrix3d skew(Vector3d w);
+	static Matrix4d SE3_matrix(Matrix3d R, Vector3d p);
+	static Matrix3d rot(double rad, char axis);
+	static Matrix4d mod_DH_T(double a, double d, double alpha,
+		double theta);
+	static MatrixXd Ad(Matrix<double, 4, 4> T);
+	static MatrixXd adj(Matrix<double, 6, 1> V);
+
   private:
 	Matrix<double, 3, 21> J_joint;
     Matrix<double, 3, 7> ML;

@@ -10,14 +10,10 @@
 // Include Files
 #include "panda_simulation/NE_matrix.hpp"
 
-// constant
 
-typedef const Matrix3d ConstMatrix3;
-typedef const Matrix4d ConstMatrix4;
-typedef const Eigen::Matrix<double, 6, 6> ConstMatrix6;
-ConstMatrix3 eye3 = Matrix3d::Identity();
-ConstMatrix4 eye4 = Matrix4d::Identity();
-ConstMatrix6 eye6 = Eigen::Matrix<double, 6, 6>::Identity();
+Model::Model() {
+	setModel();
+}
 
 void Model::setModel() {
 	Matrix<double, 3, 3> J_joint_temp;
@@ -65,43 +61,43 @@ void Model::setModel() {
 }
 
 MatrixXd Model::getJacobian(VectorXd q) {
-    MatrixXd jacobian;
+    MatrixXd jacobian(6, 7);
+	MatrixXd p_body(3, 7);
 	for (int i = 0; i < 7; i++)
 	{
         Matrix4d T_tmp;
 		mod_DH_T(a(i), d(i), alpha(i), q(i), &T_tmp);
-
-		R.block<3, 3>(0, 3 * i) = T_tmp.block<3, 3>(0, 0);
-
+		jacobian.block<3, 1>(3, i) = T_tmp.block<3, 1>(0, 2);
 		p_body.block<3, 1>(0, i) = T_tmp.block<3, 1>(0, 3);
-
-		T.block<3, 3>(0, 4 * i) = T_tmp;
 	}
-    
-
+	for (int i = 0; i < 7; i++) {
+		Vector3d w = jacobian.block<3, 1>(3, i);
+		jacobian.block<3, 1>(0, i) = w.dot(p_body.block<3, 1>(0, 6)
+			- p_body.block<3, 1>(0, i));
+	}
     return jacobian;
 }
 
-static void skew(Vector3d w, Matrix3d *W)
+static Matrix3d Model::skew(Vector3d w)
 {
 	Matrix3d W_temp;
 	W_temp << 0.0, -w(2), w(1),
 			  w(2), 0.0, -w(0),
 			  -w(1), w(0), 0.0;
-	*W = W_temp;
+	return W_temp;
 }
 
-static void SE3_matrix(Matrix3d R, Vector3d p, Matrix<double, 4, 4> *T)
+static Matrix4d Model::SE3_matrix(Matrix3d R, Vector3d p)
 {
 	Matrix<double, 4, 4> T_tmp;
 	T_tmp.setZero();
 	T_tmp.block<3, 3>(0, 0) = R;
 	T_tmp.block<3, 1>(0, 3) = p;
 	T_tmp(3, 3) = 1.0;
-	*T = T_tmp;
+	return T_tmp;
 }
 
-static void rot(double rad, char axis, Matrix3d *R)
+static Matrix3d Model::rot(double rad, char axis)
 {
 	Matrix3d R_tmp;
 	R_tmp.setZero();
@@ -140,11 +136,11 @@ static void rot(double rad, char axis, Matrix3d *R)
 			si, co, 0.0,
 			0.0, 0.0, 1.0;
 	}
-	*R = R_tmp;
+	return R_tmp;
 }
 
-static void mod_DH_T(double a, double d, double alpha, double theta,
-    Matrix<double, 4, 4> *T)
+static Matrix4d Model::mod_DH_T(double a, double d, double alpha,
+	double theta)
 {
 	Matrix<double, 4, 4> T_tmp, T_tmp1, T_tmp2, T_tmp3, T_tmp4;
 	Vector3d p_tmp1, p_tmp2, p_tmp3;
@@ -164,35 +160,34 @@ static void mod_DH_T(double a, double d, double alpha, double theta,
 	SE3_matrix(R_tmp2, p_tmp1, &T_tmp3);
 	SE3_matrix(eye3, p_tmp3, &T_tmp4);
 	T_tmp = T_tmp1 * T_tmp2 * T_tmp3 * T_tmp4;
-	*T = T_tmp;
+	return T_tmp;
 }
 
-static void Ad(Matrix<double, 4, 4> T, Matrix<double, 6, 6> *Adjoint)
+static MatrixXd Model::Ad(Matrix<double, 4, 4> T)
 {
 	Matrix<double, 6, 6> Adjoint_tmp;
 	Adjoint_tmp.setZero();
 
 	Matrix3d skew_p;
-	skew(T.block<3, 1>(0, 3), &skew_p);
+	skew_p = skew(T.block<3, 1>(0, 3));
 	Adjoint_tmp.block<3, 3>(0, 0) = T.block<3, 3>(0, 0);
 	Adjoint_tmp.block<3, 3>(3, 3) = T.block<3, 3>(0, 0);
 	Adjoint_tmp.block<3, 3>(3, 0) = skew_p * T.block<3, 3>(0, 0);
-	*Adjoint = Adjoint_tmp;
+	return Adjoint_tmp;
 }
 
-static void adj(Matrix<double, 6, 1> V, Matrix<double, 6, 6> *adjoint)
+static void Model::adj(Matrix<double, 6, 1> V)
 {
 	Matrix<double, 6, 6> adjoint_temp;
 	adjoint_temp.setZero();
 	
-	Matrix3d skew_w, skew_v;
-	skew(V.block<3, 1>(0, 0), &skew_w);
-	skew(V.block<3, 1>(3, 0), &skew_v);
+	Matrix3d skew_w = skew(V.block<3, 1>(0, 0));
+	Matrix3d skew_v = skew(V.block<3, 1>(3, 0));
 
 	adjoint_temp.block<3, 3>(0, 0) = skew_w;
 	adjoint_temp.block<3, 3>(3, 3) = skew_w;
 	adjoint_temp.block<3, 3>(3, 0) = skew_v;
-	*adjoint = adjoint_temp;
+	return adjoint_temp;
 }
 
 void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
@@ -232,7 +227,7 @@ void Model::NE_matrix(Matrix<double, 7, 1> q, Matrix<double, 7, 1> dq,
 		T.block<3, 1>(0, 4 * i + 3) = p_body_aft.block<3, 1>(0, i);
 		T(3, 4 * i + 3) = 1.0;
 
-		skew(ML.block<3, 1>(0, i), &skew_ML);
+		skew_ML = skew(ML.block<3, 1>(0, i));
 		Gi.block<3, 3>(6 * i, 6 * i) = J_joint.block<3, 3>(0, 3 * i);
 		Gi.block<3, 3>(6 * i, 6 * i + 3) = skew_ML;
 		Gi.block<3, 3>(6 * i + 3, 6 * i) = -skew_ML;
